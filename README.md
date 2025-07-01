@@ -7,16 +7,18 @@ A lightweight, modular, and Swift 6-concurrent-safe routing system for SwiftUI *
 `ModularRouter` enables feature-based routing with support for:
 
 - 🧩 Modular route registration (`RoutePatternProvider`)
-- 🗺️ Path and query parameter decoding (`RouteParameters`)
+- 🔐 Guard mechanism via `RouteGuard` + `RouteGuardResult`
 - 🧵 Full Swift Concurrency + `Sendable` safety
-- 🔁 Clean fallback handling for unknown routes
+- 🔁 Redirect and fallback route support
+- 🧭 Deep linking with path + query decoding (`RouteParameters`)
+- 📚 Built-in support for `NavigationStack` (`Router.path`)
 - ✅ iOS 16+ support, SwiftUI-compatible
 
 ---
 
 ## 🚀 Getting Started (iOS)
 
-### 1. Define Routes in Your Feature
+### 1. Define `AppRoute` in Your Feature
 
 ```swift
 enum SettingsRoute: AppRoute {
@@ -29,10 +31,17 @@ enum SettingsRoute: AppRoute {
         case .detail(let id): return "/settings/\(id)"
         }
     }
+    
+    var pattern: String {
+        switch self {
+        case .main: return "/settings"
+        case .detail: return "/settings/:id"
+        }
+    }
 }
 ```
 
-### 2. Provide RoutePatterns in Your Module
+### 2. Provide RoutePatterns via `RoutePatternProvider`
 
 ```swift
 struct SettingsRouteProvider: RoutePatternProvider {
@@ -50,30 +59,67 @@ struct SettingsRouteProvider: RoutePatternProvider {
 }
 ```
 
-### 3. Register from Host App
+### 3. Register Routes (and optional Guards) in the Host App
 
 ```swift
-try await RouteParser.register(SettingsRouteProvider.routePatterns)
+try RouteRegistry.shared.register(SettingsRouteProvider.routePatterns[0])
+try RouteRegistry.shared.register(SettingsRouteProvider.routePatterns[1], guard: SettingsDetailGuard())
 ```
 
-## 🔎 Usage Example
+## Navigation Example
 
 ```swift
-let route = await RouteParser.parse(path: "/settings/12")
+let router = Router()
+await router.navigate(to: .wrapped(WrappedAppRoute(SettingsRoute.detail(id: 12))))
+```
+
+Use .go(to:) for fire-and-forget or .navigate(to:) if awaiting result is needed.
+
+## 🔐 Guard Support Example
+
+```swift
+struct SettingsDetailGuard: RouteGuard {
+    func shouldAllow(route: any AppRoute, parameters: RouteParameters) async -> RouteGuardResult {
+        if parameters.int("id") == 0 {
+            return .deny
+        } else {
+            return .allow
+        }
+    }
+}
+```
+
+Return .redirect(to:) to reroute dynamically.
+
+## 🔍 Deep Linking Example
+
+```swift
+let route = await RouteParser.parse(path: "/settings/99")
 
 switch route {
 case .wrapped(let wrapped):
-    print("Matched: \(wrapped.path)")
+    print("Matched route:", wrapped.path)
 case .notFound(let raw):
-    print("No match: \(raw)")
+    print("Unknown route:", raw)
 }
+```
+
+## 🧵 Parameter Decoding
+
+Use RouteParameters to extract typed values:
+
+```swift
+params.int("id")           // Int?
+params.stringArray("tags") // [String]?
+params.decodedObject("payload", as: User.self) // JSON-decoded struct
 ```
 
 ## 📱 iOS Requirements
 
 ✅ Swift 5.9+
 ✅ iOS 16+
-✅ SwiftUI or UIKit compatible
+✅ SwiftUI compatible
+✅ UIKit supported (manually integrate with your own coordinator)
 
 ## 📚 License
 

@@ -26,7 +26,9 @@ private struct DummyRoutesProvider: RoutePatternProvider {
 final class StaticRouteTest: XCTestCase {
     
     func testMatchingStaticRoute() async throws {
-        try? await RouteParser.register(DummyRoutesProvider.routePatterns)
+        for pattern in DummyRoutesProvider.routePatterns {
+            try? RouteRegistry.shared.register(pattern)
+        }
         let route = await RouteParser.parse(path: "/")
         XCTAssertEqual(route.pathDescription, "/")
     }
@@ -37,8 +39,8 @@ final class RouteParserTests: XCTestCase {
     override class func setUp() {
         super.setUp()
         
-        Task {
-            try? await RouteParser.register(DummyRoutesProvider.routePatterns)
+        for pattern in DummyRoutesProvider.routePatterns {
+            try? RouteRegistry.shared.register(pattern)
         }
     }
     
@@ -67,11 +69,16 @@ final class RouteParserTests: XCTestCase {
     }
     
     func testDuplicatePatternThrowsError() async throws {
+        guard let pattern = DummyRoutesProvider.routePatterns.first else {
+            XCTFail("Unexpected error")
+            return
+        }
+        
         do {
-            try await RouteParser.register(DummyRoutesProvider.routePatterns)
+            try RouteRegistry.shared.register(pattern)
             XCTFail("Expected duplicatePattern error")
-        } catch let error as RouteParserError {
-            XCTAssertEqual(error, .duplicatePattern("/"))
+        } catch let error as RouteRegistryError {
+            XCTAssertEqual(error, .duplicatePattern(pattern.pattern))
         } catch {
             XCTFail("Unexpected error: \(error)")
         }

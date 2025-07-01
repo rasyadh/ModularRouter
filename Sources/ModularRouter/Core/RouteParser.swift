@@ -11,27 +11,7 @@ import Foundation
 ///
 /// This class is used to parse incoming paths (e.g. from deep links or navigation)
 /// and resolve them into concrete `Route` instances.
-public actor RouteParser {
-    
-    /// All registered unique route patterns from across the app (e.g., from feature modules).
-    private static var patternMap: [String: RoutePattern] = [:]
-    
-    /// Registers one or more route patterns to be matched by this parser. Throws if any pattern is already registered.
-    ///
-    /// - Parameter newPatterns: An array of `RoutePattern` values to register.
-    /// - Throws: `RouteParserError.duplicatePattern` if a pattern already exists.
-    public static func register(_ newPatterns: [RoutePattern]) async throws {
-        // validation pattern uniqueness
-        for newPattern in newPatterns {
-            if patternMap[newPattern.pattern] != nil {
-                throw RouteParserError.duplicatePattern(newPattern.pattern)
-            }
-        }
-        
-        for newPattern in newPatterns {
-            patternMap[newPattern.pattern] = newPattern
-        }
-    }
+public struct RouteParser {
     
     /// Attempts to resolve a path (and query string) into a concrete `Route`.
     ///
@@ -52,7 +32,7 @@ public actor RouteParser {
             .reduce(into: [String: String]()) { $0[$1.name] = $1.value } ?? [:]
         
         // Try matching each registered pattern
-        for pattern in patternMap.values {
+        for pattern in RouteRegistry.shared.allPatterns() {
             if let (params, _) = match(components: components, pattern: pattern.pattern) {
                 let routeParams = RouteParameters(path: params, query: queryItems)
                 if let route = pattern.match(routeParams) {
@@ -88,11 +68,3 @@ public actor RouteParser {
         return (params, true)
     }
 }
-
-#if DEBUG
-extension RouteParser {
-    public static func clearPatterns() async {
-        patternMap = [:]
-    }
-}
-#endif

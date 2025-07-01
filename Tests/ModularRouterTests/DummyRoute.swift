@@ -17,4 +17,11 @@ public enum DummyRoute: AppRoute {
         case .exampleDetail(let id): return "/example/\(id)"
         }
     }
+    
+    public var pattern: String {
+        switch self {
+        case .example: return "/"
+        case .exampleDetail: return "/example/:id"
+        }
+    }
 }

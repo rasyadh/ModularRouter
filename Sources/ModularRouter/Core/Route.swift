@@ -7,12 +7,20 @@
 
 import Foundation
 
-/// A protocol representing a navigable route.
-/// Conforming types must be `Hashable` and `Sendable`.
+/// A type that represents a navigable route in the app.
+///
+/// Each route must provide:
+/// - `path`: The resolved navigable path (e.g., "/product/42").
+/// - `pattern`: The route pattern used for matching (e.g., "/product/:id").
+///
+/// This allows consistent navigation and route resolution across modules.
 public protocol AppRoute: Hashable, Sendable {
     
-    /// The path string representation of this route (e.g., "/product/42").
+    /// The full navigable path string (e.g., "/product/42").
     var path: String { get }
+    
+    /// The route pattern used during parsing and registration (e.g., "/product/:id").
+    var pattern: String { get }
 }
 
 /// A type-erased wrapper for any `AppRoute`, enabling it to be stored in enums
@@ -24,9 +32,17 @@ public struct WrappedAppRoute: Hashable, Sendable {
     private let _hash: @Sendable (inout Hasher) -> Void
     private let _equals: @Sendable (any AppRoute) -> Bool
     private let _path: @Sendable () -> String
+    private let _pattern: @Sendable () -> String
     private let _route: any AppRoute
     
+    /// The path representation of the wrapped route (e.g., "/products/42").
     public var path: String { _path() }
+    
+    /// The pattern associated with the route (e.g., "/products/:id").
+    public var pattern: String { _pattern() }
+    
+    /// The underlying concrete route (type-erased).
+    public var base: any AppRoute { _route }
     
     /// Creates a type-erased wrapper around any `AppRoute`.
     ///
@@ -35,6 +51,7 @@ public struct WrappedAppRoute: Hashable, Sendable {
         _route = route
         _hash = { hasher in route.hash(into: &hasher) }
         _path = { route.path }
+        _pattern = { route.pattern }
         _equals = { other in
             guard let otherTyped = other as? T else { return false }
             return otherTyped == route
