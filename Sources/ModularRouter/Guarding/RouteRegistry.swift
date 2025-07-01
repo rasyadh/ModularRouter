@@ -55,6 +55,16 @@ public final class RouteRegistry {
         )
     }
     
+    /// Registers multiple route patterns at once.
+    ///
+    /// - Parameter patterns: An array of `RoutePattern` to register.
+    /// - Throws: `RouteRegistryError` if any pattern is duplicate.
+    public func registerAll(_ patterns: [RoutePattern]) throws {
+        for pattern in patterns {
+            try register(pattern)
+        }
+    }
+    
     /// Returns all registered route patterns.
     ///
     /// This is typically used by `RouteParser` to attempt path matching.
